@@ -23,6 +23,7 @@ type Model struct {
 	tree         *tree.Tree
 	vp           viewport.Model
 	selectedFile *string
+	screenYStart int // Y position where this viewport starts in the terminal window
 }
 
 type FileClickedMsg struct {
@@ -130,11 +131,20 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.MouseMsg:
 		if msg.Button == tea.MouseButtonLeft && msg.Action == tea.MouseActionPress {
-			// Calculate absolute Y position (mouse Y + viewport offset)
-			// Mouse Y is relative to the viewport, and viewport offset is how much we've scrolled
-			absoluteY := msg.Y + m.vp.YOffset
+			// Check if click is within the viewport's vertical bounds
+			if msg.Y < m.screenYStart || msg.Y >= m.screenYStart+m.vp.Height {
+				// Click is outside the viewport
+				break
+			}
+
+			// Translate window-relative Y to viewport-relative Y
+			viewportRelativeY := msg.Y - m.screenYStart
+
+			// Calculate absolute Y position (viewport-relative Y + viewport scroll offset)
+			absoluteY := viewportRelativeY + m.vp.YOffset
+
 			// YOffset in FileNode is 1-based, and we need to account for the root not being shown
-			// So we add 1 to convert from 0-based viewport to 1-based YOffset
+			// So we add 1 to convert from 0-based to 1-based YOffset
 			// And add 1 more if root is hidden
 			targetYOffset := absoluteY + 1
 			if m.tree != nil && m.tree.Value() == dirIcon+"." {
@@ -179,6 +189,11 @@ func (m *Model) SetSize(width, height int) tea.Cmd {
 	m.vp.Width = width
 	m.vp.Height = height
 	return nil
+}
+
+// SetScreenPosition sets the Y position where this viewport starts in the terminal window.
+func (m *Model) SetScreenPosition(yStart int) {
+	m.screenYStart = yStart
 }
 
 func (m Model) printWithoutRoot() string {

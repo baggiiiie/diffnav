@@ -143,6 +143,8 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, dfCmd)
 			ftCmd := m.fileTree.SetSize(m.sidebarWidth(), m.height-footerHeight-headerHeight-searchHeight)
 			cmds = append(cmds, ftCmd)
+			// Set the screen position where the file tree viewport starts (after header + search)
+			m.fileTree.SetScreenPosition(headerHeight + searchHeight)
 
 		case fileTreeMsg:
 			m.files = msg.files
@@ -150,6 +152,7 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 			m.fileTree = m.fileTree.SetFiles(m.files)
+			m.fileTree.SetScreenPosition(headerHeight + searchHeight)
 			cmd = m.setCursor(0)
 			cmds = append(cmds, cmd)
 
