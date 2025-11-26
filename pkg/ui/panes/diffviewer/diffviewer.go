@@ -49,6 +49,11 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			m.vp = vp
 		}
 
+	case tea.MouseMsg:
+		vp, vpCmd := m.vp.Update(msg)
+		cmds = append(cmds, vpCmd)
+		m.vp = vp
+
 	case diffContentMsg:
 		m.vp.SetContent(msg.text)
 	}
