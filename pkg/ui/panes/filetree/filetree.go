@@ -25,6 +25,10 @@ type Model struct {
 	selectedFile *string
 }
 
+type FileClickedMsg struct {
+	FilePath string
+}
+
 func (m Model) SetFiles(files []*gitdiff.File) Model {
 	m.files = files
 	t := buildFullFileTree(files)
@@ -89,6 +93,28 @@ func (m *Model) scrollSelectedFileIntoView(t *tree.Tree) {
 	}
 }
 
+func (m *Model) findFileAtYOffset(t *tree.Tree, targetY int) string {
+	if t == nil {
+		return ""
+	}
+	children := t.Children()
+	for i := 0; i < children.Length(); i++ {
+		child := children.At(i)
+		switch child := child.(type) {
+		case *tree.Tree:
+			result := m.findFileAtYOffset(child, targetY)
+			if result != "" {
+				return result
+			}
+		case filenode.FileNode:
+			if child.YOffset == targetY {
+				return child.Path()
+			}
+		}
+	}
+	return ""
+}
+
 func New() Model {
 	return Model{
 		files: []*gitdiff.File{},
@@ -101,7 +127,32 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
-	m.vp, _ = m.vp.Update(msg)
+	switch msg := msg.(type) {
+	case tea.MouseMsg:
+		if msg.Button == tea.MouseButtonLeft && msg.Action == tea.MouseActionPress {
+			// Calculate absolute Y position (mouse Y + viewport offset)
+			// Mouse Y is relative to the viewport, and viewport offset is how much we've scrolled
+			absoluteY := msg.Y + m.vp.YOffset
+			// YOffset in FileNode is 1-based, and we need to account for the root not being shown
+			// So we add 1 to convert from 0-based viewport to 1-based YOffset
+			// And add 1 more if root is hidden
+			targetYOffset := absoluteY + 1
+			if m.tree != nil && m.tree.Value() == dirIcon+"." {
+				targetYOffset++
+			}
+
+			// Find which file was clicked
+			filePath := m.findFileAtYOffset(m.tree, targetYOffset)
+			if filePath != "" {
+				return m, func() tea.Msg {
+					return FileClickedMsg{FilePath: filePath}
+				}
+			}
+		}
+		m.vp, _ = m.vp.Update(msg)
+	default:
+		m.vp, _ = m.vp.Update(msg)
+	}
 	return m, nil
 }
 

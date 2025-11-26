@@ -124,6 +124,17 @@ func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
+		case filetree.FileClickedMsg:
+			// Find the file index by path
+			for i, f := range m.files {
+				if filenode.GetFileName(f) == msg.FilePath {
+					m.diffViewer.GoToTop()
+					cmd = m.setCursor(i)
+					cmds = append(cmds, cmd)
+					break
+				}
+			}
+
 		case tea.WindowSizeMsg:
 			m.help.Width = msg.Width
 			m.width = msg.Width
